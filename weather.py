@@ -18,9 +18,16 @@ from waveshare_epd import epd7in5_V2
 #Base
 FONT_DIR = os.path.join(os.path.dirname(__file__), 'font')
 PIC_DIR = os.path.join(os.path.dirname(__file__), 'pic')
-header_info = {'X-Api-Key': 'P4WdY9BxfVbvklYzqHZYKQ==RuSCcWKHJY2bRYiQ'}
-QUOTE_BASE_URL = 'https://api.api-ninjas.com/v2/randomquotes'
 
+# User defined configuration
+header_info = {'X-Api-Key': 'P4WdY9BxfVbvklYzqHZYKQ==RuSCcWKHJY2bRYiQ'} #header info for usage of quote API
+QUOTE_BASE_URL = 'https://api.api-ninjas.com/v2/randomquotes'
+WEATHER_API_KEY = '32aaf6abc10bd2348865920a6fbd8c23'  # Your API key for openweathermap.com
+WEATHER_BASE_URL = f'https://api.openweathermap.org/data/3.0/onecall'
+WEATHER_LOCATION = '.Stuttgart'  # Name of location
+WEATHER_LATITUDE = '48.782'  # Latitude
+WEATHER_LONGITUDE = '9.177'  # Longitude
+WEATHER_UNITS = 'metric' # imperial or metric
 
 # Set fonts 
 font22 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 22)
@@ -60,6 +67,40 @@ def process_quote_data(data):
         return quote_data
     except KeyError as e:
         logging.error(f"Error processing quote data: {e}")
+        raise
+    
+# Fetch weather data
+def fetch_weather_data():
+    url = f"{WEATHER_BASE_URL}?lat={WEATHER_LATITUDE}&lon={WEATHER_LONGITUDE}&units={WEATHER_UNITS}&appid={WEATHER_API_KEY}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        logging.info("Weather data fetched successfully.")
+        return response.json()
+    except requests.RequestException as e:
+        logging.error(f"Failed to fetch weather data: {e}")
+        raise
+    
+# Process weather data
+def process_weather_data(data):
+    try:
+        current = data['current']
+        daily = data['daily'][0]
+        weather_data = {
+            "temp_current": current['temp'],
+            "feels_like": current['feels_like'],
+            "humidity": current['humidity'],
+            "wind": current['wind_speed'],
+            "report": current['weather'][0]['description'].title(),
+            "icon_code": current['weather'][0]['icon'],
+            "temp_max": daily['temp']['max'],
+            "temp_min": daily['temp']['min'],
+            "precip_percent": daily['pop'] * 100,
+        }
+        logging.info("Weather data processed successfully.")
+        return weather_data
+    except KeyError as e:
+        logging.error(f"Error processing weather data: {e}")
         raise
         
 # Generate display image
