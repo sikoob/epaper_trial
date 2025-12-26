@@ -5,26 +5,27 @@ import os
 import logging
 import time
 from datetime import datetime
-from pillow import Image,ImageDraw,ImageFont
+from PIL import Image,ImageDraw,ImageFont
 import traceback
 import requests
 
 # Automatically add the 'lib' directory relative to the script's location
-script_dir = os.path.dirname(os.path.abspath(__file__))
-lib_path = os.path.join(script_dir, 'lib')
-sys.path.append(lib_path)
-from waveshare_epd import epd7in5_V2
+#script_dir = os.path.dirname(os.path.abspath(__file__))
+#lib_path = os.path.join(script_dir, 'lib')
+#sys.path.append(lib_path)
+#from waveshare_epd import epd7in5_V2
 
 #Base
 FONT_DIR = os.path.join(os.path.dirname(__file__), 'font')
 PIC_DIR = os.path.join(os.path.dirname(__file__), 'pic')
 ICON_DIR = os.path.join(PIC_DIR, 'icon')
+refresh_time = 14400
 
 # User defined configuration
 header_info = {'X-Api-Key': 'P4WdY9BxfVbvklYzqHZYKQ==RuSCcWKHJY2bRYiQ'} #header info for usage of quote API
 QUOTE_BASE_URL = 'https://api.api-ninjas.com/v2/randomquotes'
 WEATHER_API_KEY = '32aaf6abc10bd2348865920a6fbd8c23'  # Your API key for openweathermap.com
-WEATHER_BASE_URL = f'https://api.openweathermap.org/data/3.0/onecall'
+WEATHER_BASE_URL = f'https://api.openweathermap.org/data/2.5/weather?'
 WEATHER_LOCATION = '.Stuttgart'  # Name of location
 WEATHER_LATITUDE = '48.782'  # Latitude
 WEATHER_LONGITUDE = '9.177'  # Longitude
@@ -32,6 +33,7 @@ WEATHER_UNITS = 'metric' # imperial or metric
 
 # Set fonts 
 font22 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 22)
+font26 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 26)
 font30 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 30)
 font35 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 35)
 font50 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 50)
@@ -41,9 +43,9 @@ font160 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 160)
 COLORS = {'black': 'rgb(0,0,0)', 'white': 'rgb(255,255,255)', 'grey': 'rgb(235,235,235)'}
 
 #Initalize E-Paper
-epd = epd7in5_V2.EPD()
-epd.init()
-epd.Clear()
+#epd = epd7in5_V2.EPD()
+#epd.init()
+#epd.Clear()
         
 # Fetch quote api
 def fetch_quote_data():
@@ -57,22 +59,22 @@ def fetch_quote_data():
         raise
             
 # Process quote data
-def process_quote_data(data):
+def process_quote_data(quote_data):
     try:
-        quote_info= data[0]
-        quote_data= {
+        quote_info= quote_data[0]
+        quote_proc= {
             "quote": quote_info['quote'],
             "author": quote_info['author']
         }
         logging.info("Quote data processed successfully.")
-        return quote_data
+        return quote_proc
     except KeyError as e:
         logging.error(f"Error processing quote data: {e}")
         raise
     
 # Fetch weather data
 def fetch_weather_data():
-    url = f"{WEATHER_BASE_URL}?lat={WEATHER_LATITUDE}&lon={WEATHER_LONGITUDE}&units={WEATHER_UNITS}&appid={WEATHER_API_KEY}"
+    url = f"{WEATHER_BASE_URL}lat={WEATHER_LATITUDE}&lon={WEATHER_LONGITUDE}&units={WEATHER_UNITS}&appid={WEATHER_API_KEY}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -83,50 +85,43 @@ def fetch_weather_data():
         raise
     
 # Process weather data
-def process_weather_data(data):
+def process_weather_data(weather_data):
     try:
-        current = data['current']
-        daily = data['daily'][0]
-        weather_data = {
+        current = weather_data['main']
+        weather_proc = {
             "temp_current": current['temp'],
             "feels_like": current['feels_like'],
-            #"humidity": current['humidity'],
-            #"wind": current['wind_speed'],
-            #"report": current['weather'][0]['description'].title(),
-            "icon_code": current['weather'][0]['icon'],
-            #"temp_max": daily['temp']['max'],
-            #"temp_min": daily['temp']['min'],
-            #"precip_percent": daily['pop'] * 100,
+            "icon_code": weather_data['weather'][0]['icon']
         }
         logging.info("Weather data processed successfully.")
-        return weather_data
+        return weather_proc
     except KeyError as e:
         logging.error(f"Error processing weather data: {e}")
         raise
         
 # Generate display image
-def generate_display_image(quote_data, weather_data):
+def generate_display_image(quote_proc, weather_proc):
     try:
         #Vorbereitung für Erstellung des darzustellenden Bildes
-        template = Image.open(os.path.join(PIC_DIR, 'template.png'))
+        template = Image.open(os.path.join(PIC_DIR, 'template2.png'))
         draw = ImageDraw.Draw(template)
-        icon_path = os.path.join(ICON_DIR, f"{weather_data['icon_code']}.png")
+        icon_path = os.path.join(ICON_DIR, f"{weather_proc['icon_code']}.png")
         icon_image = Image.open(icon_path) if os.path.exists(icon_path) else None
         
         #Zeichnung von Zitat und Autorname im oberen Feld
-        draw.text((30, 80), f"'{quote_data['quote']}'", font=font30, fill=COLORS['black'])
-        draw.text((30, 240), f"- {quote_data['author']}", font=font22, fill=COLORS['black'])
+        draw.text((30, 80), f"'{quote_proc['quote']}'", font=font30, fill=COLORS['black'])
+        draw.text((30, 240), f"- {quote_proc['author']}", font=font22, fill=COLORS['black'])
        
         #Darstellung des Wettersymbols unten links
         if icon_image:
-            template.paste(icon_image, (40, 325))
+            template.paste(icon_image, (40, 300))
         
         #Darstellung der aktuellen Temperatur und wie diese sich anfühlt
-        draw.text((370, 325), f"{weather_data['temp_current']:.0f}°C", font=font60, fill=COLORS['black'])
-        draw.text((345, 390), f"Gefühlt: {weather_data['feels_like']:.0f}°C", font=font35, fill=COLORS['black'])
+        draw.text((390, 325), f"{weather_proc['temp_current']:.0f}°C", font=font60, fill=COLORS['black'])
+        draw.text((345, 410), f"Gefühlt: {weather_proc['feels_like']:.0f}°C", font=font35, fill=COLORS['black'])
         
         #Darstellung des Zeitpunkts der Aktualisierung
-        draw.text((627, 330), "AKTUALISIERT", font=font35, fill=COLORS['white'])
+        draw.text((627, 330), "UPDATE", font=font35, fill=COLORS['white'])
         current_time = datetime.now().strftime('%H:%M')
         draw.text((627, 375), current_time, font=font60, fill=COLORS['white'])
         return template
@@ -137,9 +132,13 @@ def generate_display_image(quote_data, weather_data):
 # Display image on screen
 def display_image(image):
     try:
-        h_image = Image.new('1', (epd.width, epd.height), 255)
-        h_image.paste(image, (0, 0))
-        epd.display(epd.getbuffer(h_image))
+        #Create image for setup
+        image.save("trial_setup.png")
+
+        #Setting up ePaper
+        #h_image = Image.new('1', (epd.width, epd.height), 255)
+        #h_image.paste(image, (0, 0))
+        #epd.display(epd.getbuffer(h_image))
         logging.info("Image displayed on e-paper successfully.")
     except Exception as e:
         logging.error(f"Failed to display image: {e}")
@@ -149,9 +148,11 @@ def display_image(image):
 def main():
     try:        
         #Call all necessary functions
-        data = fetch_quote_data()
-        quote_data = process_quote_data(data)
-        image = generate_display_image(quote_data)
+        quote_data = fetch_quote_data()
+        quote_proc = process_quote_data(quote_data)
+        weather_data= fetch_weather_data()
+        weather_proc = process_weather_data(weather_data)        
+        image = generate_display_image(quote_proc, weather_proc)
         display_image(image)
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
