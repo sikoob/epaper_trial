@@ -10,10 +10,10 @@ import traceback
 import requests
 
 # Automatically add the 'lib' directory relative to the script's location
-#script_dir = os.path.dirname(os.path.abspath(__file__))
-#lib_path = os.path.join(script_dir, 'lib')
-#sys.path.append(lib_path)
-#from waveshare_epd import epd7in5_V2
+script_dir = os.path.dirname(os.path.abspath(__file__))
+lib_path = os.path.join(script_dir, 'lib')
+sys.path.append(lib_path)
+from waveshare_epd import epd7in5_V2
 
 #Base
 FONT_DIR = os.path.join(os.path.dirname(__file__), 'font')
@@ -43,9 +43,9 @@ font160 = ImageFont.truetype(os.path.join(FONT_DIR, 'Font.ttc'), 160)
 COLORS = {'black': 'rgb(0,0,0)', 'white': 'rgb(255,255,255)', 'grey': 'rgb(235,235,235)'}
 
 #Initalize E-Paper
-#epd = epd7in5_V2.EPD()
-#epd.init()
-#epd.Clear()
+epd = epd7in5_V2.EPD()
+epd.init()
+epd.Clear()
         
 # Fetch quote api
 def fetch_quote_data():
@@ -102,13 +102,13 @@ def process_weather_data(weather_data):
 # Generate display image
 def generate_display_image(quote_proc, weather_proc):
     try:
-        #Vorbereitung für Erstellung des darzustellenden Bildes
+        #Preparation of display
         template = Image.open(os.path.join(PIC_DIR, 'template2.png'))
         draw = ImageDraw.Draw(template)
         icon_path = os.path.join(ICON_DIR, f"{weather_proc['icon_code']}.png")
         icon_image = Image.open(icon_path) if os.path.exists(icon_path) else None
         
-        #Zeichnung von Zitat und Autorname im oberen Feld
+        #Display quote and author in top display area
         quote_display = quote_proc['quote']
         
         #Separate quote into different lines with full words once quote is too long
@@ -151,12 +151,11 @@ def generate_display_image(quote_proc, weather_proc):
             draw.text((30, 80), f"'{quote_splitted_first}", font=font30, fill=COLORS['black'])
             draw.text((30, 120), f"{quote_splitted_second}", font=font30, fill=COLORS['black'])
             draw.text((30, 160), f"{quote_splitted_third}'", font=font30, fill=COLORS['black'])
-        else:
+        else:   #if too many characters, the quote will be shortened
             quote_display_separate = quote_display.split()
             quote_splitted_first = ''
             quote_splitted_second = ''
             quote_splitted_third = ''
-            quote_splitted_fourth='...'
             
             i = 0
             
@@ -168,25 +167,26 @@ def generate_display_image(quote_proc, weather_proc):
                 quote_splitted_second = quote_splitted_second + quote_display_separate[i] + ' '
                 i= i+1
                 
-            for item in quote_display_separate[i:]:
-                quote_splitted_third = quote_splitted_third + item + ' '
+            while len(quote_splitted_third) < 47:
+                quote_splitted_third = quote_splitted_third + quote_display_separate[i] + ' '
+                
+            quote_splitted_third = quote_splitted_third + "...'" #... to show continuance
       
             draw.text((30, 80), f"'{quote_splitted_first}", font=font30, fill=COLORS['black'])
             draw.text((30, 120), f"{quote_splitted_second}", font=font30, fill=COLORS['black'])
-            draw.text((30, 160), f"{quote_splitted_third}", font=font30, fill=COLORS['black'])  
-            draw.text((30, 200), f"{quote_splitted_fourth}'", font=font30, fill=COLORS['black'])  
+            draw.text((30, 160), f"{quote_splitted_third}", font=font30, fill=COLORS['black']) 
             
         draw.text((30, 240), f"- {quote_proc['author']}", font=font22, fill=COLORS['black'])
        
-        #Darstellung des Wettersymbols unten links
+        #Display of weather symbol left bottom
         if icon_image:
             template.paste(icon_image, (65, 310))
         
-        #Darstellung der aktuellen Temperatur und wie diese sich anfühlt
+        #Display of actual and felt temperatur mid bottom
         draw.text((390, 325), f"{weather_proc['temp_current']:.0f}°C", font=font60, fill=COLORS['black'])
         draw.text((345, 410), f"Gefühlt: {weather_proc['feels_like']:.0f}°C", font=font35, fill=COLORS['black'])
         
-        #Darstellung des Zeitpunkts der Aktualisierung
+        #Display of time and date of last update right bottom
         draw.text((627, 330), "UPDATE", font=font35, fill=COLORS['white'])
         current_time = datetime.now().strftime('%H:%M')
         draw.text((627, 375), current_time, font=font50, fill=COLORS['white'])
@@ -204,9 +204,9 @@ def display_image(image):
         image.save("trial_setup.png")
 
         #Setting up ePaper
-        #h_image = Image.new('1', (epd.width, epd.height), 255)
-        #h_image.paste(image, (0, 0))
-        #epd.display(epd.getbuffer(h_image))
+        h_image = Image.new('1', (epd.width, epd.height), 255)
+        h_image.paste(image, (0, 0))
+        epd.display(epd.getbuffer(h_image))
         logging.info("Image displayed on e-paper successfully.")
     except Exception as e:
         logging.error(f"Failed to display image: {e}")
@@ -230,10 +230,12 @@ if __name__ == "__main__":
     try:
         running = 0
         while running < 1:
+            epd.Clear()             #Clearing ePaper screen every 4 hours
             main()
-            #time.sleep(refresh_time)
-            running = 1
+            time.sleep(refresh_time)
+            #running = 1            #can be used to break code for debugging sessions to stop automatic while loop
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}. The process will be stopped until error is resolved.")
         running = 1
+        epd.sleep() #turn off ePaper screen
         
