@@ -169,6 +169,7 @@ def generate_display_image(quote_proc, weather_proc):
                 
             while len(quote_splitted_third) < 47:
                 quote_splitted_third = quote_splitted_third + quote_display_separate[i] + ' '
+                i= i+1
                 
             quote_splitted_third = quote_splitted_third + "...'" #... to show continuance
       
