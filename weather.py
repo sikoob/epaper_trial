@@ -109,12 +109,78 @@ def generate_display_image(quote_proc, weather_proc):
         icon_image = Image.open(icon_path) if os.path.exists(icon_path) else None
         
         #Zeichnung von Zitat und Autorname im oberen Feld
-        draw.text((30, 80), f"'{quote_proc['quote']}'", font=font30, fill=COLORS['black'])
+        quote_display = quote_proc['quote']
+        
+        #Separate quote into different lines with full words once quote is too long
+        if len(quote_display) <= 50:
+            draw.text((30, 80), f"'{quote_display}'", font=font30, fill=COLORS['black'])
+        elif len(quote_display) >50 and len(quote_display) <=100:
+            quote_display_separate = quote_display.split()
+            quote_splitted_first = ''
+            quote_splitted_second = ''
+            i = 0
+            
+            while len(quote_splitted_first) < 50:
+                quote_splitted_first = quote_splitted_first + quote_display_separate[i] + ' '
+                i= i+1
+            
+            for item in quote_display_separate[i:]:
+                quote_splitted_second = quote_splitted_second + item + ' '
+      
+            draw.text((30, 80), f"'{quote_splitted_first}", font=font30, fill=COLORS['black'])
+            draw.text((30, 120), f"{quote_splitted_second}'", font=font30, fill=COLORS['black'])
+        elif len(quote_display) >110 and len(quote_display) <=150:
+            quote_display_separate = quote_display.split()
+            quote_splitted_first = ''
+            quote_splitted_second = ''
+            quote_splitted_third = ''
+            
+            i = 0
+            
+            while len(quote_splitted_first) < 50:
+                quote_splitted_first = quote_splitted_first + quote_display_separate[i] + ' '
+                i= i+1
+                
+            while len(quote_splitted_second) < 50:
+                quote_splitted_second = quote_splitted_second + quote_display_separate[i] + ' '
+                i= i+1
+                
+            for item in quote_display_separate[i:]:
+                quote_splitted_third = quote_splitted_third + item + ' '
+      
+            draw.text((30, 80), f"'{quote_splitted_first}", font=font30, fill=COLORS['black'])
+            draw.text((30, 120), f"{quote_splitted_second}", font=font30, fill=COLORS['black'])
+            draw.text((30, 160), f"{quote_splitted_third}'", font=font30, fill=COLORS['black'])
+        else:
+            quote_display_separate = quote_display.split()
+            quote_splitted_first = ''
+            quote_splitted_second = ''
+            quote_splitted_third = ''
+            quote_splitted_fourth='...'
+            
+            i = 0
+            
+            while len(quote_splitted_first) < 50:
+                quote_splitted_first = quote_splitted_first + quote_display_separate[i] + ' '
+                i= i+1
+                
+            while len(quote_splitted_second) < 50:
+                quote_splitted_second = quote_splitted_second + quote_display_separate[i] + ' '
+                i= i+1
+                
+            for item in quote_display_separate[i:]:
+                quote_splitted_third = quote_splitted_third + item + ' '
+      
+            draw.text((30, 80), f"'{quote_splitted_first}", font=font30, fill=COLORS['black'])
+            draw.text((30, 120), f"{quote_splitted_second}", font=font30, fill=COLORS['black'])
+            draw.text((30, 160), f"{quote_splitted_third}", font=font30, fill=COLORS['black'])  
+            draw.text((30, 200), f"{quote_splitted_fourth}'", font=font30, fill=COLORS['black'])  
+            
         draw.text((30, 240), f"- {quote_proc['author']}", font=font22, fill=COLORS['black'])
        
         #Darstellung des Wettersymbols unten links
         if icon_image:
-            template.paste(icon_image, (40, 300))
+            template.paste(icon_image, (65, 310))
         
         #Darstellung der aktuellen Temperatur und wie diese sich anfühlt
         draw.text((390, 325), f"{weather_proc['temp_current']:.0f}°C", font=font60, fill=COLORS['black'])
@@ -123,7 +189,9 @@ def generate_display_image(quote_proc, weather_proc):
         #Darstellung des Zeitpunkts der Aktualisierung
         draw.text((627, 330), "UPDATE", font=font35, fill=COLORS['white'])
         current_time = datetime.now().strftime('%H:%M')
-        draw.text((627, 375), current_time, font=font60, fill=COLORS['white'])
+        draw.text((627, 375), current_time, font=font50, fill=COLORS['white'])
+        current_day = datetime.today().strftime('%d.%m.%Y')
+        draw.text((627, 435), current_day, font=font26, fill=COLORS['white'])
         return template
     except Exception as e:
         logging.error(f"Error generating display image: {e}")
@@ -158,5 +226,14 @@ def main():
         logging.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
-    main()
-    
+    #Execute main function every 4 hours after initialization according to set refresh time. Stop function once an error arises
+    try:
+        running = 0
+        while running < 1:
+            main()
+            #time.sleep(refresh_time)
+            running = 1
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}. The process will be stopped until error is resolved.")
+        running = 1
+        
