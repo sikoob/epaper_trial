@@ -5,7 +5,7 @@ import os
 import logging
 import time
 from datetime import datetime
-from PIL import Image,ImageDraw,ImageFont
+from pillow import Image,ImageDraw,ImageFont
 import traceback
 import requests
 
@@ -18,6 +18,7 @@ from waveshare_epd import epd7in5_V2
 #Base
 FONT_DIR = os.path.join(os.path.dirname(__file__), 'font')
 PIC_DIR = os.path.join(os.path.dirname(__file__), 'pic')
+ICON_DIR = os.path.join(PIC_DIR, 'icon')
 
 # User defined configuration
 header_info = {'X-Api-Key': 'P4WdY9BxfVbvklYzqHZYKQ==RuSCcWKHJY2bRYiQ'} #header info for usage of quote API
@@ -89,13 +90,13 @@ def process_weather_data(data):
         weather_data = {
             "temp_current": current['temp'],
             "feels_like": current['feels_like'],
-            "humidity": current['humidity'],
-            "wind": current['wind_speed'],
-            "report": current['weather'][0]['description'].title(),
+            #"humidity": current['humidity'],
+            #"wind": current['wind_speed'],
+            #"report": current['weather'][0]['description'].title(),
             "icon_code": current['weather'][0]['icon'],
-            "temp_max": daily['temp']['max'],
-            "temp_min": daily['temp']['min'],
-            "precip_percent": daily['pop'] * 100,
+            #"temp_max": daily['temp']['max'],
+            #"temp_min": daily['temp']['min'],
+            #"precip_percent": daily['pop'] * 100,
         }
         logging.info("Weather data processed successfully.")
         return weather_data
@@ -104,12 +105,28 @@ def process_weather_data(data):
         raise
         
 # Generate display image
-def generate_display_image(quote_data):
+def generate_display_image(quote_data, weather_data):
     try:
+        #Vorbereitung für Erstellung des darzustellenden Bildes
         template = Image.open(os.path.join(PIC_DIR, 'template.png'))
         draw = ImageDraw.Draw(template)
-        draw.text((30, 200), f"'{quote_data['quote']}'", font=font30, fill=COLORS['black'])
+        icon_path = os.path.join(ICON_DIR, f"{weather_data['icon_code']}.png")
+        icon_image = Image.open(icon_path) if os.path.exists(icon_path) else None
+        
+        #Zeichnung von Zitat und Autorname im oberen Feld
+        draw.text((30, 80), f"'{quote_data['quote']}'", font=font30, fill=COLORS['black'])
         draw.text((30, 240), f"- {quote_data['author']}", font=font22, fill=COLORS['black'])
+       
+        #Darstellung des Wettersymbols unten links
+        if icon_image:
+            template.paste(icon_image, (40, 325))
+        
+        #Darstellung der aktuellen Temperatur und wie diese sich anfühlt
+        draw.text((370, 325), f"{weather_data['temp_current']:.0f}°C", font=font60, fill=COLORS['black'])
+        draw.text((345, 390), f"Gefühlt: {weather_data['feels_like']:.0f}°C", font=font35, fill=COLORS['black'])
+        
+        #Darstellung des Zeitpunkts der Aktualisierung
+        draw.text((627, 330), "AKTUALISIERT", font=font35, fill=COLORS['white'])
         current_time = datetime.now().strftime('%H:%M')
         draw.text((627, 375), current_time, font=font60, fill=COLORS['white'])
         return template
@@ -142,29 +159,3 @@ def main():
 if __name__ == "__main__":
     main()
     
-    # Drawing on the Vertical image
-    #logging.info("2.Drawing on the Vertical image...")
-    #Limage = Image.new('1', (epd.height, epd.width), 255)  # 255: clear the frame
-    #draw = ImageDraw.Draw(Limage)
-    #draw.text((2, 0), 'hello world', font = font18, fill = 0)
-    #epd.display(epd.getbuffer(Limage))
-    #time.sleep(2)
-    
-    #logging.info("3.read bmp file")
-    #Himage = Image.open(os.path.join(picdir, '7in5.bmp'))
-    #epd.display(epd.getbuffer(Himage))
-    #time.sleep(2)
-    
-    #logging.info("4.read bmp file on window")
-    #Himage2 = Image.new('1', (epd.height, epd.width), 255)  # 255: clear the frame
-    #bmp = Image.open(os.path.join(picdir, '100x100.bmp'))
-    #Himage2.paste(bmp, (50,10))
-    #epd.display(epd.getbuffer(Himage2))
-    #time.sleep(2)
-
-    #logging.info("Clear...")
-    #epd.init()
-    #epd.Clear()
-    
-    #logging.info("Goto Sleep...")
-    #epd.sleep()
