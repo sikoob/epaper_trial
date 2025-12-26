@@ -129,7 +129,7 @@ def generate_display_image(quote_proc, weather_proc):
       
             draw.text((30, 80), f"'{quote_splitted_first}", font=font30, fill=COLORS['black'])
             draw.text((30, 120), f"{quote_splitted_second}'", font=font30, fill=COLORS['black'])
-        elif len(quote_display) >110 and len(quote_display) <=150:
+        elif len(quote_display) >100 and len(quote_display) <=150:
             quote_display_separate = quote_display.split()
             quote_splitted_first = ''
             quote_splitted_second = ''
